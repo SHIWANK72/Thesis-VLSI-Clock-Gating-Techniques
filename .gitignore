@@ -1,0 +1,6 @@
+# Synopsys Files
+*.log
+*.rpt
+*.db
+*.ddc
+*.svf
