@@ -1,62 +1,210 @@
-# Thesis-VLSI-Clock-Gating-Techniques
+# Clock Gating Optimization Study
 
-> **Status: 🔄 Under Reproducibility Verification (as of July 2026)**
+**Nik-Coronics | Independent R&D Initiative**
+**Engineer:** Shiwank Gupta · **Date:** July 2026
 
-## Current Situation
+---
 
-This repository originally contained a **pre-research thesis** (Jan–Sep 2025, Kurukshetra University) investigating clock gating for dynamic power reduction. The original methodology assumed access to commercial EDA tools (Synopsys Design Compiler, PrimeTime PX, IC Compiler) at 45nm. Those tools were not independently accessible, so **the reported results (61.7% dynamic power reduction, clock tree metrics, 180nm–16nm technology scaling) were theoretical/assumed — not derived from actual simulation, synthesis, or power analysis.**
+## 🎯 Objective
 
-This project is currently being **rebuilt end-to-end using a fully open-source, reproducible flow**, so that every number in the final version is backed by a log file, waveform, netlist, or power report that anyone can regenerate from this repo.
+Study the effect of **Integrated Clock Gating (ICG)** on a
+32-bit RISC datapath by implementing 4 variants and comparing
+synthesis area and power results using open-source EDA tools.
 
-## Reproducibility Roadmap
+---
 
-| Phase | Description | Status |
-|---|---|---|
-| 0 | Toolchain setup (Icarus Verilog, Yosys, sky130 PDK, OpenSTA) | ⬜ Pending |
-| 1 | RTL — 6-module RISC datapath (640 FFs): ALU, Register File, Multiplier, Shift Register Bank, Control FSM, Data Path Bus | ⬜ Pending |
-| 2 | Testbenches — 4 workload vectors (ALU-intensive, memory-heavy, multiplier-intensive, mixed) | ⬜ Pending |
-| 3 | Functional verification (Icarus Verilog, VCD waveforms) | ⬜ Pending |
-| 4 | Synthesis — Yosys + sky130 PDK, 4 gating configurations (None / Static / Dynamic / Hybrid) | ⬜ Pending |
-| 5 | Power analysis — OpenSTA + real switching activity from VCD (replaces PrimeTime PX) | ⬜ Pending |
-| 6 | Thesis rewrite with real numbers + proof package (RTL, VCDs, netlists, power reports) | ⬜ Pending |
+## 📐 What is Clock Gating?
 
-*(Checkboxes will be updated as each phase completes, with linked proof artifacts.)*
+```
+Every flip-flop consumes power on every clock edge —
+even when its data hasn't changed.
 
-## Why the Rewrite
+Clock Gating = insert an ICG cell that blocks the clock
+               when the register data is stable
 
-Engineering credibility comes from reproducibility, not just plausible-sounding numbers. Rather than leave an unverified academic thesis as the final artifact, this repo is being converted into a fully open, buildable flow — same design, same architecture, but every claim traceable to a command and its output.
+Power saved = alpha × C × V² × f
+Where alpha = switching activity factor
 
-## Original Thesis
+ICG Cell Structure:
+  EN ──→ [ LATCH ] ──→ [ AND ] ──→ Gated CLK → FF
+  CLK ──────────────→ [ AND ]
 
-The original pre-research thesis document is retained in this repo for reference and historical context. It should be read as a **design and methodology proposal**, not as validated experimental results, until the reproducibility phases above are complete.
+Key rule: EN must be stable when CLK is LOW
+          Latch prevents glitches on gated clock
+```
 
-## Project Overview
+---
 
-The core objective is to analyze and implement clock gating to prevent unnecessary switching activity in idle registers of a 32-bit RISC datapath, evaluating static, dynamic, and hybrid gating strategies for dynamic power reduction.
+## ⚙️ Design Variants
 
-## Author
+```
+1. datapath_no_gating   — Baseline, no ICG cells
+2. datapath_static_cg   — Static ICG: fixed enable gating
+3. datapath_dynamic_cg  — Dynamic ICG: activity-based control
+4. datapath_hybrid_cg   — Hybrid: static + dynamic combined
+```
 
-**Shiwank Gupta** — VLSI Design Engineer / FPGA Developer, Nik-Coronics R&D
-# Thesis-VLSI-Clock-Gating-Techniques
-A research thesis investigating the effectiveness of clock gating techniques for reducing dynamic power consumption in synchronous digital circuits.
-# Thesis: Investigation of Novel Clock Gating Techniques
+---
 
-This repository contains the documentation and sample code for my undergraduate thesis on clock gating techniques. The clock network is one of the largest sources of power consumption in synchronous digital systems. This research explores methods to reduce this dynamic power by deactivating the clock to idle modules.
+## 🛠️ Tool Flow
 
-## Project Overview
-[cite_start]The core objective was to analyze and implement clock gating to prevent unnecessary switching activity in idle functional blocks, thereby saving a significant amount of dynamic power. 
+```
+Platform  : Google Colab
+Synthesis : Yosys 0.9
+PDK       : Sky130A (sky130_fd_sc_hd)
+Power     : OpenSTA 3.1.0
+Corner    : tt_025C_1v80
+```
 
-## Concepts Investigated
-- **Dynamic Power Consumption**: A deep dive into the `P = C * V^2 * f * a` equation, with a focus on reducing the activity factor (`a`).
-- **Latch-Free vs. Latch-Based Clock Gating**: Analysis of different implementation styles. Latch-based gating is generally preferred as it is glitch-free and safer for synthesis.
+---
 
-## Implementation & Analysis
-A standard, latch-based clock gating cell was implemented in Verilog to demonstrate the concept. The logic uses an enable signal to control the clock flow to a downstream register bank.
+## 📊 Synthesis Results
 
-The efficacy of this technique was validated by integrating the clock gating cell into a benchmark digital circuit. [cite_start]The design was then analyzed using **Synopsys tools** to: [cite: 47]
-1.  Synthesize the design correctly, ensuring timing constraints were met.
-2.  Run power analysis simulations both with and without clock gating.
-3.  Quantify the percentage reduction in dynamic power.
+![Synthesis Summary](results/synthesis_summary.png)
 
-## Key Learnings
-This research provided a strong understanding of low-power design methodologies used in the industry. It offered practical experience in writing synthesizable Verilog for power-sensitive applications and using professional EDA tools for power analysis and verification.
+```
+Variant               Cells    Area (µm²)   vs Baseline
+────────────────────────────────────────────────────────
+datapath_no_gating    7,164    57,837.97    baseline
+datapath_static_cg    7,088    58,157.03    +0.55%
+datapath_dynamic_cg   7,673    61,492.73    +6.32%
+datapath_hybrid_cg    7,276    59,196.77    +2.35%
+
+Note: Area INCREASES with clock gating due to ICG
+      cell overhead — this is expected behavior.
+      Area overhead is the cost; power saving is the benefit.
+```
+
+---
+
+## 📊 Power Analysis Results
+
+![Power Summary](results/power_summary.png)
+
+```
+Tool: OpenSTA 3.1.0
+Activity: 0.05 (5% global uniform)
+Clock: 100 MHz
+
+Variant               Power (W)     vs Baseline
+───────────────────────────────────────────────
+datapath_no_gating    3.24e-03 W    baseline
+datapath_static_cg    3.24e-03 W    ~0%
+datapath_dynamic_cg   3.41e-03 W    +5.7% overhead
+datapath_hybrid_cg    3.34e-03 W    +3.1% overhead
+```
+
+---
+
+## 📊 Visual Dashboard
+
+![Dashboard](results/clock_gating_dashboard.png)
+
+---
+
+## ⚠️ Honest Limitations
+
+```
+1. STATIC ANALYSIS LIMITATION
+   OpenSTA global activity (0.05) treats all signals
+   equally — clock gating benefit is SELECTIVE
+   (per-register). Static analysis cannot capture this.
+
+2. BLACK BOX CELLS
+   $_DLATCH_P_ not in Sky130A liberty file.
+   Treated as black box — power contribution missing.
+
+3. VCD ANNOTATION NOT DONE
+   Accurate dynamic power requires:
+   Simulation → VCD file → read_vcd → report_power
+   This was NOT completed in this study.
+
+4. THEORETICAL VS TOOL RESULT
+   Theory: P_dynamic = alpha × C × V² × f
+   At alpha < 0.1, selective gating saves power.
+   Tool: Global alpha = cannot show selective benefit.
+```
+
+---
+
+## 🔑 Key Learnings
+
+```
+1. Clock gating adds area (ICG cell overhead)
+   but saves power when registers are frequently idle
+
+2. Dynamic CG has most overhead (control logic added)
+
+3. Static analysis insufficient for clock gating evaluation
+   — VCD-based flow needed for accuracy
+
+4. ICG benefit: alpha (activity) must be low (<0.1)
+   for savings to outweigh ICG cell overhead
+
+5. Real-world: CG applied selectively to idle registers
+   not globally — verified with power simulation
+```
+
+---
+
+## 📁 Repository Structure
+
+```
+Clock-Gating-Optimization/
+├── rtl/
+│   ├── icg_infra.v          ← ICG cell + register file
+│   ├── remaining_modules.v  ← ALU, FSM, datapath modules
+│   └── top_level_variants.v ← 4 design variants
+├── sim/
+│   └── tb_datapath.v        ← Testbench
+├── synth/
+│   ├── netlists/            ← Gate-level netlists
+│   └── logs/                ← Synthesis reports
+├── power/                   ← OpenSTA power reports
+├── results/
+│   ├── synthesis_summary.png
+│   ├── power_summary.png
+│   └── clock_gating_dashboard.png
+├── notes.md                 ← Detailed study notes
+└── README.md                ← This file
+```
+
+---
+
+## 📅 Study Status
+
+```
+✅ RTL — 4 variants implemented
+✅ Synthesis — Yosys + Sky130A
+✅ Power estimation — OpenSTA static
+✅ Honest documentation of limitations
+⬜ VCD-based dynamic power analysis
+⬜ Gate-level simulation
+⬜ Multi-corner analysis (ff/ss/tt)
+```
+
+---
+
+## 🔭 Next Steps
+
+```
+1. Functional simulation → VCD generation
+2. read_vcd OpenSTA → per-signal activity
+3. Accurate dynamic power comparison
+4. Multi-corner: ff/ss/tt analysis
+```
+
+---
+
+## 📬 Connect
+
+Open to RTL/DV opportunities, research collaborations,
+and mentoring students in low-power design.
+
+**Email:** NIKORONICS@proton.me
+**GitHub:** github.com/SHIWANK72
+**LinkedIn:** linkedin.com/in/guptashiwank
+
+---
+
+*Shiwank Gupta | Nik-Coronics | VLSI R&D*
