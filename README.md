@@ -178,7 +178,7 @@ Clock-Gating-Optimization/
 ✅ Synthesis — Yosys + Sky130A
 ✅ Power estimation — OpenSTA static
 ✅ Honest documentation of limitations
-⬜ VCD-based dynamic power analysis
+✅ VCD-based dynamic power analysis
 ⬜ Gate-level simulation
 ⬜ Multi-corner analysis (ff/ss/tt)
 ```
@@ -188,10 +188,7 @@ Clock-Gating-Optimization/
 ## 🔭 Next Steps
 
 ```
-1. Functional simulation → VCD generation
-2. read_vcd OpenSTA → per-signal activity
-3. Accurate dynamic power comparison
-4. Multi-corner: ff/ss/tt analysis
+1. Multi-corner: ff/ss/tt analysis
 ```
 
 ---
